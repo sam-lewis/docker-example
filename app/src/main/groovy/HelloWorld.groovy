@@ -10,7 +10,7 @@ class HelloWorld {
         get(new Route("/"){
             @Override
             Object handle(Request request, Response response) {
-                'Hello from Docker!'
+                'Hello from Docker!!!'
             }
         })
     }

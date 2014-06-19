@@ -1,0 +1,13 @@
+
+task dist(type: Zip) {
+    from 'src/main/docker/DockerFile'
+    from('../app/build/libs') {
+        into '/app'
+    }
+}
+
+build.dependsOn(dist)
+
+
+
+

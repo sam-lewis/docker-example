@@ -1,0 +1,30 @@
+
+//TODO: Use Application Plugin
+
+dependencies {
+    compile 'com.sparkjava:spark-core:1.0'
+}
+
+jar.doFirst {
+    manifest {
+        attributes (
+                "Main-Class" : 'HelloWorld',
+                "Class-Path" : configurations.compile.collect { "lib/${it.name}" }.join(' ')
+        )
+    }
+}
+
+task copyDependencies(type:Copy) {
+    from configurations.compile
+    into 'build/libs/lib'
+}
+
+build.dependsOn(copyDependencies)
+
+task dist(type:Zip){
+    from 'build/libs'
+}
+
+build.dependsOn(dist)
+
+

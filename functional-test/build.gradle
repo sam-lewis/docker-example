@@ -1,0 +1,80 @@
+
+dependencies {
+    testCompile 'org.glassfish.jersey.core:jersey-client:2.9.1'
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://oss.sonatype.org/content/groups/public"
+        }
+    }
+    dependencies {
+        classpath 'com.github.docker-java:docker-java:0.9.0-SNAPSHOT'
+    }
+}
+
+task unzipAppDocker(type: Copy) {
+    from zipTree('../app-docker/build/distributions/app-docker.zip')
+    into "$buildDir/app-docker"
+}
+
+task deployToDocker(dependsOn: unzipAppDocker) << {
+    deployDocker('http://localhost:2375', new File("$buildDir/app-docker"), ['8080'] as String[])
+}
+
+test.dependsOn(deployToDocker)
+
+import com.github.dockerjava.client.DockerClient
+import com.github.dockerjava.client.model.Ports
+
+void deployDocker(String serverUrl, File dockerDir, String[] exposedPorts) {
+
+    assert serverUrl
+    assert dockerDir.exists()
+
+    def dockerClient = new DockerClient(serverUrl)
+
+    for(def container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
+
+        println "Removing Container $container.id"
+        dockerClient.removeContainerCmd(container.id).withForce().exec()
+        println "Container Removed"
+    }
+
+    println "Building Image from [$dockerDir.absolutePath]..."
+
+    def result = dockerClient.buildImageCmd(dockerDir).withTag('gradle-build').exec()
+    assert result.statusInfo.statusCode == 200
+
+    def log = result.getEntityInputStream().text
+
+    def matcher = log =~ /.*Successfully built (\w+).*/
+
+    assert matcher.find()
+
+    def imageId = matcher.group(1)
+
+    println "Created Image: [$imageId]"
+
+    println "Creating Container with exposed ports: [$exposedPorts]..."
+
+    def container = dockerClient.createContainerCmd(imageId).withExposedPorts(exposedPorts).exec()
+
+    println "Created Container [$container.id]"
+
+
+    println "Starting Container..."
+
+    def portBindings = new Ports()
+    exposedPorts.each {
+        portBindings.addPort("$it/tcp", "", it)
+    }
+    dockerClient.startContainerCmd(container.id).withPortBindings(portBindings).exec()
+
+    println "Container Started"
+}
+
+
+

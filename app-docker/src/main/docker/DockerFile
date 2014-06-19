@@ -6,11 +6,11 @@ MAINTAINER Sam Lewis
 
 # Add app
 RUN mkdir /root/app
-ADD docker-example.jar /root/app/
-ADD lib /root/app/lib
+ADD app/app.jar /root/app/
+ADD app/lib /root/app/lib
 
 # Expose
 EXPOSE 8080
 
 # Run
-CMD (cd /root/app; java -jar docker-example.jar)
+CMD (cd /root/app; java -jar app.jar)

@@ -24,7 +24,6 @@ Run the Application
 
 * Run `boot2docker up --hostip=192.168.59.103`
 * In the root of this project run `gradlew clean build`
-* In the root of this project run `gradlew deployToDocker`
 * Browse to http://192.168.59.103:8080
 
 [Boot2Docker]:https://github.com/boot2docker/boot2docker
