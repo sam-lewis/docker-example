@@ -1,0 +1,16 @@
+
+# Pull base image.
+FROM dockerfile/java
+
+MAINTAINER Sam Lewis
+
+# Add app
+RUN mkdir /root/app
+ADD docker-example.jar /root/app/
+ADD lib /root/app/lib
+
+# Expose
+EXPOSE 8080
+
+# Run
+CMD (cd /root/app; java -jar docker-example.jar)
