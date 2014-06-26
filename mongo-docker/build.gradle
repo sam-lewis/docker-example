@@ -1,0 +1,10 @@
+
+task dist(type: Zip) {
+    from 'src/main/docker'
+}
+
+build.dependsOn(dist)
+
+
+
+
