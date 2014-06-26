@@ -1,7 +1,7 @@
 Docker Example
 ==============
 
-This example is a basic java webapp deployed to docker using gradle.
+This example is a basic java webapp deployed to docker using gradle. A mongodb docker is also setup.
 
 [Boot2Docker] is used to install docker on non-linux platforms. [docker-java] is used called from gradle to deploy the application
 
@@ -28,3 +28,8 @@ Run the Application
 
 [Boot2Docker]:https://github.com/boot2docker/boot2docker
 [docker-java]:https://github.com/docker-java/docker-java
+
+Connect to Mongo
+----------------
+
+* Run `mongo 192.168.59.103/27017`

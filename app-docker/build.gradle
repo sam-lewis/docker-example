@@ -1,6 +1,6 @@
 
 task dist(type: Zip) {
-    from 'src/main/docker/DockerFile'
+    from 'src/main/docker'
     from('../app/build/libs') {
         into '/app'
     }

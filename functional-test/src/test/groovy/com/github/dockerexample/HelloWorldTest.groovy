@@ -13,6 +13,6 @@ class HelloWorldTest extends Specification {
 
     def 'test get /'() {
         expect:
-        resource.request(MediaType.TEXT_PLAIN_TYPE).get(String) == 'Hello from Docker!!!'
+        resource.request(MediaType.TEXT_PLAIN_TYPE).get(String) == 'Hello from Docker!'
     }
 }
