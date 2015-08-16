@@ -1,126 +1,93 @@
+apply plugin: 'com.bmuschko.docker-remote-api'
+
+import com.bmuschko.gradle.docker.tasks.container.*
+import com.bmuschko.gradle.docker.tasks.image.*
+
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:2.5.2'
+    }
+}
+
 dependencies {
     testCompile 'org.glassfish.jersey.core:jersey-client:2.9.1'
 }
 
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://oss.sonatype.org/content/groups/public"
-        }
-    }
-    dependencies {
-        classpath 'com.github.docker-java:docker-java:0.9.0-SNAPSHOT'
-        classpath 'com.google.guava:guava:17.0'
-    }
+docker {
+    url = 'https://192.168.99.101:2376'
+    certPath = new File(System.properties['user.home'], '.docker/machine/certs')
 }
+
 task unzipAppDocker(type: Copy, dependsOn: ':app-docker:dist') {
     from zipTree('../app-docker/build/distributions/app-docker.zip')
     into "$buildDir/app-docker"
 }
 
-task unzipRiakDocker(type: Copy, dependsOn: ':mongo-docker:dist') {
+task buildMyAppImage(type: DockerBuildImage) {
+    dependsOn unzipAppDocker
+    inputDir = file("$buildDir/app-docker")
+    tag = 'test/app-docker'
+}
+
+task createMyAppContainer(type: DockerCreateContainer) {
+    dependsOn buildMyAppImage
+    targetImageId { buildMyAppImage.getImageId() }
+    portBindings = ['8080:8080']
+}
+
+task startMyAppContainer(type: DockerStartContainer) {
+    dependsOn createMyAppContainer
+    targetContainerId { createMyAppContainer.getContainerId() }
+}
+
+task stopMyAppContainer(type: DockerStopContainer) {
+    targetContainerId { createMyAppContainer.getContainerId() }
+}
+
+task unzipMongoDocker(type: Copy, dependsOn: ':mongo-docker:dist') {
     from zipTree('../mongo-docker/build/distributions/mongo-docker.zip')
     into "$buildDir/mongo-docker"
 }
 
-
-import com.github.dockerjava.client.DockerClient
-import com.github.dockerjava.client.model.ExposedPort
-import com.github.dockerjava.client.model.Ports
-import com.github.dockerjava.client.model.Ports.Host
-import org.apache.commons.lang.time.StopWatch
-
-task deployToDocker(dependsOn: [unzipAppDocker, unzipRiakDocker]) << {
-    def dockerClient = new DockerClient('http://localhost:2375')
-    removeAllContainers(dockerClient)
-    deployContainer(dockerClient, new File("$buildDir/mongo-docker"), 'mongo-docker', [27017] as Integer[])
-    deployContainer(dockerClient, new File("$buildDir/app-docker"), 'app-docker', [8080] as Integer[])
+task buildMongoImage(type: DockerBuildImage) {
+    dependsOn unzipMongoDocker
+    inputDir = file("$buildDir/mongo-docker")
+    tag = 'test/mongo-docker'
 }
 
-def removeAllContainers(DockerClient dockerClient) {
-    println "Removing Existing Containers"
-    for (def container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
-
-        println "Removing Container $container.id"
-        dockerClient.removeContainerCmd(container.id).withForce().exec()
-        println "Container Removed"
-    }
+task createMongoContainer(type: DockerCreateContainer) {
+    dependsOn buildMongoImage
+    targetImageId { buildMongoImage.getImageId() }
+    portBindings = ['27017:27017']
 }
 
-def deployContainer(DockerClient dockerClient, File dockerDir, String tag,  Integer[] exposedPorts) {
-    assert dockerDir.exists()
-
-    println "Building Image from [$dockerDir.absolutePath]..."
-
-    def result = dockerClient.buildImageCmd(dockerDir).withTag(tag).exec()
-    assert result.statusInfo.statusCode == 200
-
-    def log = result.getEntityInputStream().text
-
-    def matcher = log =~ /.*Successfully built (\w+).*/
-
-    assert matcher.find(), log
-
-    def imageId = matcher.group(1)
-
-    println "Created Image: [$imageId]"
-
-    println "Creating Container with exposed ports: [$exposedPorts]..."
-
-    def exposedPortObjects = exposedPorts.collect {
-        ExposedPort.tcp(it)
-    } as ExposedPort[]
-
-    def container = dockerClient.createContainerCmd(imageId).withExposedPorts(exposedPortObjects).exec()
-
-    println "Created Container [$container.id]"
-
-
-    println "Starting Container..."
-
-    def portBindings = new Ports()
-    exposedPorts.each {
-        portBindings.addMapping(ExposedPort.tcp(it), new Host('', it))
-    }
-    dockerClient.startContainerCmd(container.id).withPortBindings(portBindings).exec()
-
-    println "Container Started"
+task startMongoContainer(type: DockerStartContainer) {
+    dependsOn createMongoContainer
+    targetContainerId { createMongoContainer.getContainerId() }
 }
 
-task waitForAppStart(dependsOn: [deployToDocker]) << {
-    println "Waiting...."
-    waitFor({
-        try {
-            new URL('http://192.168.59.103:8080').text
-            println "App started"
-            return true
-        } catch (e) {
-            println "Failed to connect $e"
-            return false
-        }
-    }, 10000, 100)
+task stopMongoContainer(type: DockerStopContainer) {
+    targetContainerId { createMongoContainer.getContainerId() }
 }
 
-test.dependsOn(waitForAppStart)
+test.dependsOn([startMyAppContainer, startMongoContainer])
+test.finalizedBy([stopMyAppContainer, stopMongoContainer])
 
-void waitFor(def condition, int timeout, int pollInterval) {
-    def stopWatch = new StopWatch()
-    stopWatch.start()
-
-    while (true) {
-        try {
-            assert condition()
-            return
-        } catch (AssertionError e) {
-            if (stopWatch.time > timeout) {
-                throw e
-            } else {
-                sleep(pollInterval)
-            }
-        }
-    }
+task runApp << {
+    println 'Docker Containers Started'
+    System.console().readLine '\n\nPress enter to quit...'
+    println 'Stopping Docker Containers'
 }
+
+runApp.dependsOn([startMyAppContainer, startMongoContainer])
+runApp.finalizedBy([stopMyAppContainer, stopMongoContainer])
+
+
 
 
 

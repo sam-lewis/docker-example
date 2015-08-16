@@ -9,7 +9,7 @@ class HelloWorldTest extends Specification {
 
     def client = ClientBuilder.newClient()
 
-    def resource = client.target('http://192.168.59.103:8080')
+    def resource = client.target('http://192.168.99.101:8080')
 
     def 'test get /'() {
         expect:

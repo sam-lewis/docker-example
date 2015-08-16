@@ -1,6 +1,6 @@
 
 # Pull base image.
-FROM dockerfile/java
+FROM java:8
 
 MAINTAINER Sam Lewis
 

@@ -1,5 +1,5 @@
 
-task dist(type: Zip) {
+task dist(type: Zip, dependsOn: ':app:build') {
     from 'src/main/docker'
     from('../app/build/libs') {
         into '/app'

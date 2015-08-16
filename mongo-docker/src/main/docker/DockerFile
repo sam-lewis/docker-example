@@ -1,5 +1,5 @@
 # Use the Ubuntu base image provided by dotCloud
-FROM ubuntu:12.04
+FROM ubuntu:latest
 
 MAINTAINER Sam Lewis
 
